@@ -15,11 +15,11 @@ import (
 	_ "github.com/jinzhu/gorm/dialects/postgres" // not using directly in the code, need some stuff from this package
 )
 
-type Person struct {
+type User struct {
 	gorm.Model
-
+	Userid    int    `json:"userid"`
 	Name      string `json:"firstname"`
-	LastName  string `json:"lastname"`
+	Lastname  string `json:"lastname"`
 	Age       string `json:"age"`
 	Birthdate string `json:"birthdate"`
 }
@@ -66,16 +66,26 @@ func main() {
 	// Make db migration - stumping the struct into the db	, telling the data base - thats the attribute of person,
 	// do it in the postgres, we do it once.
 
-	db.AutoMigrate(&Person{})
+	db.AutoMigrate(&User{})
+
+	// user1 := User{
+	// 	Userid:    1,
+	// 	Name:      "EE",
+	// 	Lastname:  "DDD",
+	// 	Age:       "12",
+	// 	Birthdate: "ddd",
+	// }
+	// db.CreateTable(context.Background(),user1)
+	// req
 
 	// API routes
 
 	router := mux.NewRouter()
 
-	router.HandleFunc("/people", getPeople).Methods("GET")                   // only can get users not sending post request
-	router.HandleFunc("/create/person", createPerson).Methods("POST")        // post a new user
-	router.HandleFunc("/delete/person/{id}", deletePerson).Methods("DELETE") // delete a user
-	router.HandleFunc("/update/person/{id}", updatePerson).Methods("PUT")    // update a user
+	router.HandleFunc("/users", getUsers).Methods("GET")                 // only can get users not sending post request
+	router.HandleFunc("/create/user", createUser).Methods("POST")        // post a new user
+	router.HandleFunc("/delete/user/{id}", deleteUser).Methods("DELETE") // delete a user
+	router.HandleFunc("/update/user/{id}", updateUser).Methods("PUT")    // update a user
 
 	// http uses port 80, so 80 for http request
 	//Now, when running a web server on my computer, i need to access that server somehow
@@ -86,22 +96,28 @@ func main() {
 }
 
 // Api Controllers
-func getPeople(w http.ResponseWriter, r *http.Request) {
+func getUsers(w http.ResponseWriter, r *http.Request) {
 	// array of people , go into the db and find all of the people , all the models who fits the struct Person
-	var people []Person
+	var people []User
 	db.Find(&people)
 
 	// convert it into json
 	json.NewEncoder(w).Encode(&people)
 }
 
-func createPerson(w http.ResponseWriter, r *http.Request) {
-	var person Person // creating struct to insert the information to it
+func createUser(w http.ResponseWriter, r *http.Request) {
+	var person User // creating struct to insert the information to it
 
 	// someone sends json and we convert it into struct of Person
 	json.NewDecoder(r.Body).Decode(&person) // r.Body - its the json
 
+	//getting current max ID
+	var tmp User
+	db.Last(&tmp)
+	person.Userid = tmp.Userid + 1
+
 	createdPerson := db.Create(&person)
+
 	err = createdPerson.Error
 
 	// sends error in case we didnt succeed uploading to the db
@@ -113,11 +129,11 @@ func createPerson(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func deletePerson(w http.ResponseWriter, r *http.Request) {
+func deleteUser(w http.ResponseWriter, r *http.Request) {
 
 	params := mux.Vars(r) // getting the params to extract the id .
 
-	var person Person
+	var person User
 
 	db.First(&person, params["id"]) // the first that mataches
 
@@ -127,10 +143,10 @@ func deletePerson(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func updatePerson(w http.ResponseWriter, r *http.Request) {
+func updateUser(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r) // getting the params to extract the id .
 
-	var person Person
+	var person User
 
 	db.First(&person, params["id"]) // the first that mataches
 
